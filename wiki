@@ -1,0 +1,174 @@
+#!/bin/bash
+
+DATA_DIR=~/.mywiki/
+HEAD_LINES=2
+TEMPLATE_FILE=${DATA_DIR}/.template
+
+create_template()
+{
+cat << EOF
+TAGS:
+DESCRIPTION:
+EOF
+}
+
+error()
+{
+	echo $1
+	exit 1
+}
+
+usage()
+{
+	echo "wiki.sh [new | edit | list | rm | <search terms> ]
+	new <filename>		- create a new wiki file
+	edit <filename>		- edit a wiki file
+	rm <filename>		- remove a wiki file
+	list			- list all wiki files
+	<search terms>		- search for specified terms"
+}
+
+header()
+{
+	COLUMNS=$(tput cols)
+	eval printf -- '-%.s' {1..$COLUMNS}
+	echo
+	title=$1
+	tput bold
+	printf "%*s\n" $(((${#title}+$COLUMNS)/2)) "$title"
+	tput sgr0
+	eval printf -- '-%.s' {1..$COLUMNS}
+	echo
+}
+
+header_small()
+{
+	title=$1
+	echo -e "\033[1m$title\033[0m"
+}
+
+new()
+{
+	if [ $# -ne 2 ]; then
+		echo "Error: filename should be provided"
+		usage
+		exit 1
+	fi
+	filename=$2
+	if [ -f ${DATA_DIR}/$filename ]; then
+		echo "File \"$filename\" already exist!"
+		exit 1
+	fi
+	echo "Creating new wiki entry \"$filename\""
+	( $EDITOR -c "read $TEMPLATE_FILE" ${DATA_DIR}/$filename )
+	if [ -f ${DATA_DIR}/$filename ]; then
+		echo "New entry \"$filename\" was successfully created!"
+		cat ${DATA_DIR}/$filename
+	else
+		echo "New entry \"$filename\" was NOT created!"
+	fi
+	exit 0
+}
+
+list()
+{
+	if [ $# -gt 1 ]; then
+		echo "Error: unexpected arguments"
+		usage
+		exit 1
+	fi
+	for file in $(ls $DATA_DIR); do
+		header $file
+		head -n${HEAD_LINES} ${DATA_DIR}/$file | sed -e "s/\(.*\)/\t\1/"
+	done
+	exit 0
+}
+
+remove()
+{
+	if [ $# -ne 2 ]; then
+		echo "Error: filename should be provided"
+		usage
+		exit 1
+	fi
+	filename=$2
+	if [ -f ${DATA_DIR}/$filename ]; then
+		echo "Removing \"$filename\"!"
+		rm ${DATA_DIR}/$filename
+	else
+		echo "\"$filename\" entry does NOT exist!"
+		exit 1
+	fi
+	exit 0
+}
+
+edit()
+{
+	if [ $# -ne 2 ]; then
+		echo "Error: filename should be provided"
+		usage
+		exit 1
+	fi
+	filename=$2
+	if [ -f ${DATA_DIR}/$filename ]; then
+		( $EDITOR ${DATA_DIR}/$filename )
+	else
+		echo "\"$filename\" entry does NOT exist!"
+		exit 1
+	fi
+	exit 0
+}
+
+search()
+{
+	if [ $# -lt 1 ]; then
+		echo "Error: Search words should be provided"
+		usage
+		exit 1
+	fi
+	string=`echo $@ | sed -e "s/ / -e /g"`
+	echo "Searching for terms: $string"
+	found=0
+	for file in $(ls $DATA_DIR); do
+		if [ "$file" == "$string" ]; then
+			header $file
+			cat ${DATA_DIR}/$file | sed -e "s/\(.*\)/\t\1/"
+			found=$(($found+1))
+			continue
+		fi
+		head -n1 ${DATA_DIR}/$file | grep -i -q -e $string
+		if [ $? -eq 0 ]; then
+			header $file
+			cat ${DATA_DIR}/$file | sed -e "s/\(.*\)/\t\1/"
+			found=$(($found+1))
+		fi
+	done
+	if [ $found -eq 0 ]; then
+		echo "Nothing was found!"
+	fi
+	exit 0
+}
+
+
+if [ ! -d $DATA_DIR ]; then
+	mkdir $DATA_DIR 2>&1> /dev/null || error "Can not create $DATA_DIR"
+fi
+
+if [ ! -f $TEMPLATE_FILE ]; then
+	create_template > $TEMPLATE_FILE
+fi
+
+case $1 in
+	new) new $@;;
+	edit) edit $@;;
+	list) list $@;;
+	rm | remove) remove $@;;
+esac
+
+if [ $# -lt 1 ]; then
+	list
+else
+	search $@
+fi
+
+exit 0

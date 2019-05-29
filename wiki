@@ -47,6 +47,48 @@ header_small()
 	echo -e "\033[1m$title\033[0m"
 }
 
+git_pull()
+{
+	[ ! -d "$DATA_DIR/.git" ] && return
+	(
+	cd $DATA_DIR
+	git pull
+	)
+}
+
+git_add()
+{
+	[ ! -d "$DATA_DIR/.git" ] && return
+	(
+		cd $DATA_DIR
+		[ -z "$1" ] && error "git: File to add to git repository was not specified"
+		if [ ! -f "$1" ]; then
+			git ls-files -d | grep -E "^${1}$" 2> /dev/null
+			[ $? -ne 0 ] && error "git: File \"$1\" does not exist"
+			op="Delete file"
+		else
+			op="Add new file"
+			git ls-files | grep -E "^${1}$" 2> /dev/null
+			[ $? -eq 0 ] && op="Update file"
+
+		fi
+
+		git add $1
+		changes=`git --no-pager diff --cached | wc -l`
+		[ "$changes" == "0" ] && return
+		git commit -m "$op $1"
+	)
+}
+
+git_push()
+{
+	[ ! -d "$DATA_DIR/.git" ] && return
+	(
+	cd $DATA_DIR
+	git push
+	)
+}
+
 new()
 {
 	if [ $# -ne 2 ]; then
@@ -64,10 +106,10 @@ new()
 	if [ -f ${DATA_DIR}/$filename ]; then
 		echo "New entry \"$filename\" was successfully created!"
 		cat ${DATA_DIR}/$filename
+		git_add $filename
 	else
 		echo "New entry \"$filename\" was NOT created!"
 	fi
-	exit 0
 }
 
 list()
@@ -81,7 +123,6 @@ list()
 		header $file
 		head -n${HEAD_LINES} ${DATA_DIR}/$file | sed -e "s/\(.*\)/\t\1/"
 	done
-	exit 0
 }
 
 remove()
@@ -95,11 +136,11 @@ remove()
 	if [ -f ${DATA_DIR}/$filename ]; then
 		echo "Removing \"$filename\"!"
 		rm ${DATA_DIR}/$filename
+		git_add $filename
 	else
 		echo "\"$filename\" entry does NOT exist!"
 		exit 1
 	fi
-	exit 0
 }
 
 edit()
@@ -112,11 +153,11 @@ edit()
 	filename=$2
 	if [ -f ${DATA_DIR}/$filename ]; then
 		( $EDITOR ${DATA_DIR}/$filename )
+		git_add $filename
 	else
 		echo "\"$filename\" entry does NOT exist!"
 		exit 1
 	fi
-	exit 0
 }
 
 search()
@@ -146,7 +187,6 @@ search()
 	if [ $found -eq 0 ]; then
 		echo "Nothing was found!"
 	fi
-	exit 0
 }
 
 
@@ -154,15 +194,27 @@ if [ ! -d $DATA_DIR ]; then
 	mkdir $DATA_DIR 2>&1> /dev/null || error "Can not create $DATA_DIR"
 fi
 
+git_pull
+
 if [ ! -f $TEMPLATE_FILE ]; then
 	create_template > $TEMPLATE_FILE
 fi
 
-case $1 in
+CMD=$1
+
+case $CMD in
 	new) new $@;;
 	edit) edit $@;;
 	list) list $@;;
 	rm | remove) remove $@;;
+esac
+
+case $CMD in
+	new|edit|rm|remove)
+		git_push
+		exit 0;;
+	list)
+		exit 0;;
 esac
 
 if [ $# -lt 1 ]; then

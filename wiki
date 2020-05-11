@@ -1,8 +1,12 @@
 #!/bin/bash
 
-DATA_DIR=~/.mywiki/
-HEAD_LINES=2
-TEMPLATE_FILE=${DATA_DIR}/.template
+[ -z "$MYWIKI_CONFIG" ] && MYWIKI_CONFIG=~/.mywiki.config/
+
+[ -f "$MYWIKI_CONFIG" ] && . $MYWIKI_CONFIG
+
+[ -z "$DATA_DIR" ]	&& DATA_DIR=~/.mywiki/
+[ -z "$HEAD_LINES" ]	&& HEAD_LINES=2
+[ -z "$TEMPLATE_FILE" ]	&& TEMPLATE_FILE=${DATA_DIR}/.template
 
 create_template()
 {

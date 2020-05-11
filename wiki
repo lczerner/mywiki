@@ -207,14 +207,14 @@ fi
 CMD=$1
 
 case $CMD in
-	new) new $@;;
-	edit) edit $@;;
-	list) list $@;;
-	rm | remove) remove $@;;
+	new | add)	new $@;;
+	edit)		edit $@;;
+	list)		list $@;;
+	rm | remove)	remove $@;;
 esac
 
 case $CMD in
-	new|edit|rm|remove)
+	new|edit|rm|remove|add)
 		git_push
 		exit 0;;
 	list)

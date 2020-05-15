@@ -7,6 +7,7 @@
 [ -z "$DATA_DIR" ]	&& DATA_DIR=~/.mywiki/
 [ -z "$HEAD_LINES" ]	&& HEAD_LINES=2
 [ -z "$TEMPLATE_FILE" ]	&& TEMPLATE_FILE=${DATA_DIR}/.template
+[ -z "$HIDDEN_TAG" ] && HIDDEN_TAG="--- HIDDEN ---"
 
 create_template()
 {
@@ -180,7 +181,7 @@ search()
 			[ $? -ne 0 ] && continue
 		fi
 		header $file
-		sed "s/\(.*\)/\t\1/" ${DATA_DIR}/$file
+		sed "s/\(.*\)/\t\1/;/${HIDDEN_TAG}/Q" ${DATA_DIR}/$file
 		found=$(($found+1))
 	done
 	if [ $found -eq 0 ]; then

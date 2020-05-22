@@ -165,6 +165,24 @@ edit()
 	fi
 }
 
+do_append()
+{
+	if [ $# -lt 2 ]; then
+		echo "Error: filename should be provided"
+		usage
+		exit 1
+	fi
+	filename=$2
+	shift 2
+	if [ -f ${DATA_DIR}/$filename ]; then
+		echo $@ >> ${DATA_DIR}/$filename
+		git_add $filename
+	else
+		echo "\"$filename\" entry does NOT exist!"
+		exit 1
+	fi
+}
+
 search()
 {
 	if [ $# -lt 1 ]; then
@@ -206,11 +224,12 @@ case $CMD in
 	new | add)	new $@;;
 	edit)		edit $@;;
 	list)		list $@;;
+	append)		do_append $@;;
 	rm | remove)	remove $@;;
 esac
 
 case $CMD in
-	new|edit|rm|remove|add)
+	new|edit|rm|remove|add|append)
 		git_push
 		exit 0;;
 	list)

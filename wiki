@@ -174,13 +174,13 @@ do_append()
 	fi
 	filename=$2
 	shift 2
-	if [ -f ${DATA_DIR}/$filename ]; then
-		echo $@ >> ${DATA_DIR}/$filename
-		git_add $filename
-	else
-		echo "\"$filename\" entry does NOT exist!"
-		exit 1
+
+	if [ ! -f ${DATA_DIR}/$filename ]; then
+		cp $TEMPLATE_FILE ${DATA_DIR}/$filename
 	fi
+
+	echo $@ >> ${DATA_DIR}/$filename
+	git_add $filename
 }
 
 search()

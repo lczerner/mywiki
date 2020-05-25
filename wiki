@@ -187,17 +187,27 @@ do_append()
 
 do_show()
 {
-	if [ $# -gt 2 ]; then
+	shift
+	hidden=0
+	if [ "$1" == "-h" ]; then
+		hidden=1
+		shift
+	fi
+	if [ $# -ne 1 ]; then
 		echo "Error: too many arguments"
 		usage
 		exit 1
 	fi
-	filename=$2
+	filename=$1
 	if [ ! -f ${DATA_DIR}/$filename ]; then
 		echo "\"$filename\" does not exist!"
 		exit 1
 	fi
-	cat ${DATA_DIR}/$filename
+	if [ $hidden -eq 0 ]; then
+		cat ${DATA_DIR}/$filename
+	else
+		sed "1,/${HIDDEN_TAG}/d" ${DATA_DIR}/$filename
+	fi
 }
 
 search()

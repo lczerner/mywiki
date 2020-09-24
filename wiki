@@ -37,7 +37,7 @@ error_usage()
 
 usage()
 {
-	echo "wiki.sh [new | edit | list | rm | <search terms> ]
+	echo "$(basename $0) [new | edit | list | rm | <search terms> ]
 	new <filename>		- create a new wiki file
 	edit <filename>		- edit a wiki file
 	rm <filename>		- remove a wiki file

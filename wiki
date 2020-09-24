@@ -1,9 +1,14 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-2.0
+#
+# Simple wiki with command line interface and git support for storing
+# personal notes
 
+# Read the configuration file if it exists
 [ -z "$MYWIKI_CONFIG" ] && MYWIKI_CONFIG=~/.mywiki.config/
-
 [ -f "$MYWIKI_CONFIG" ] && . $MYWIKI_CONFIG
 
+# Set the default configuration
 [ -z "$DATA_DIR" ]	&& DATA_DIR=~/.mywiki/
 [ -z "$HEAD_LINES" ]	&& HEAD_LINES=2
 [ -z "$TEMPLATE_FILE" ]	&& TEMPLATE_FILE=${DATA_DIR}/.template
@@ -19,7 +24,14 @@ EOF
 
 error()
 {
-	echo $1
+	echo "ERROR: ${1}"
+	exit 1
+}
+
+error_usage()
+{
+	echo "Error: ${1}!"
+	usage
 	exit 1
 }
 
@@ -48,12 +60,6 @@ header()
 	echo
 }
 
-header_small()
-{
-	title=$1
-	echo -e "\033[1m$title\033[0m"
-}
-
 git_pull()
 {
 	[ ! -d "$DATA_DIR/.git" ] && return
@@ -70,10 +76,12 @@ git_add()
 		cd $DATA_DIR
 		[ -z "$1" ] && error "git: File to add to git repository was not specified"
 		if [ ! -f "$1" ]; then
+			# Check if the file was deleted from repository
 			git ls-files -d | grep -E "^${1}$" 2> /dev/null
 			[ $? -ne 0 ] && error "git: File \"$1\" does not exist"
 			op="Delete file"
 		else
+			# Check if the file already exists in the repository
 			op="Add new file"
 			git ls-files | grep -E "^${1}$" 2> /dev/null
 			[ $? -eq 0 ] && op="Update file"
@@ -82,6 +90,7 @@ git_add()
 
 		git add $1
 		changes=`git --no-pager diff --cached | wc -l`
+		# If there are no changes, no need to commit
 		[ "$changes" == "0" ] && return
 		git commit -m "$op $1"
 	)
@@ -99,9 +108,7 @@ git_push()
 new()
 {
 	if [ $# -ne 2 ]; then
-		echo "Error: filename should be provided"
-		usage
-		exit 1
+		error_usage "filename should be provided"
 	fi
 	filename=$2
 	if [ -f ${DATA_DIR}/$filename ]; then
@@ -122,9 +129,7 @@ new()
 list()
 {
 	if [ $# -gt 1 ]; then
-		echo "Error: unexpected arguments"
-		usage
-		exit 1
+		error_usage "unexpected arguments"
 	fi
 	for file in $(ls $DATA_DIR); do
 		header $file
@@ -135,9 +140,7 @@ list()
 remove()
 {
 	if [ $# -ne 2 ]; then
-		echo "Error: filename should be provided"
-		usage
-		exit 1
+		error_usage "filename should be provided"
 	fi
 	filename=$2
 	if [ -f ${DATA_DIR}/$filename ]; then
@@ -153,9 +156,7 @@ remove()
 edit()
 {
 	if [ $# -ne 2 ]; then
-		echo "Error: filename should be provided"
-		usage
-		exit 1
+		error_usage "filename should be provided"
 	fi
 	filename=$2
 	if [ -f ${DATA_DIR}/$filename ]; then
@@ -170,9 +171,7 @@ edit()
 do_append()
 {
 	if [ $# -lt 2 ]; then
-		echo "Error: filename should be provided"
-		usage
-		exit 1
+		error_usage "filename should be provided"
 	fi
 	filename=$2
 	shift 2
@@ -194,9 +193,7 @@ do_show()
 		shift
 	fi
 	if [ $# -ne 1 ]; then
-		echo "Error: too many arguments"
-		usage
-		exit 1
+		error_usage "too many arguments"
 	fi
 	filename=$1
 	if [ ! -f ${DATA_DIR}/$filename ]; then
@@ -213,9 +210,7 @@ do_show()
 search()
 {
 	if [ $# -lt 1 ]; then
-		echo "Error: Search words should be provided"
-		usage
-		exit 1
+		error_usage "search words should be provided"
 	fi
 	string=`echo $@ | sed -e "s/ / -e /g"`
 	echo "Searching for terms: $string"
@@ -234,19 +229,20 @@ search()
 	fi
 }
 
-
+# Create the DATA_DIR if it does not exist yet
 if [ ! -d $DATA_DIR ]; then
 	mkdir $DATA_DIR 2>&1> /dev/null || error "Can not create $DATA_DIR"
 fi
 
 git_pull
 
+# Create the template if it does not exist yet
 if [ ! -f $TEMPLATE_FILE ]; then
 	create_template > $TEMPLATE_FILE
 fi
 
+# Run the required command
 CMD=$1
-
 case $CMD in
 	new | add)	new $@;;
 	edit)		edit $@;;
@@ -256,6 +252,7 @@ case $CMD in
 	rm | remove)	remove $@;;
 esac
 
+# After some command we need to push changes to git repository
 case $CMD in
 	new|edit|rm|remove|add|append)
 		git_push

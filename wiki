@@ -116,7 +116,16 @@ new()
 		exit 1
 	fi
 	echo "Creating new wiki entry \"$filename\""
-	( $EDITOR -c "read $TEMPLATE_FILE" ${DATA_DIR}/$filename )
+
+	case "$(basename $EDITOR)" in
+	vim)
+		( $EDITOR -c "read $TEMPLATE_FILE" ${DATA_DIR}/$filename )
+		;;
+	*)
+		cat $TEMPLATE_FILE > ${DATA_DIR}/$filename
+		( $EDITOR ${DATA_DIR}/$filename )
+	esac
+
 	if [ -f ${DATA_DIR}/$filename ]; then
 		echo "New entry \"$filename\" was successfully created!"
 		cat ${DATA_DIR}/$filename
